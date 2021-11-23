@@ -1,1 +1,33 @@
+name: CI for HelloWorld
 
+on: 
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/setup-python@v2
+      with:
+        python-version: 3.8
+    - name: Install Libraries
+      run: |
+        pip install flake8 pytest pytest-cov
+        
+    - name: Checkout Own Repo
+      uses: actions/checkout@v2
+      with: 
+        repository: lowkh/HelloWorldDemoT01
+    - name: Checkout Test Script
+      uses: actions/checkout@v2
+      with:
+        repository: lowkh2/DevOpsQARepo
+        path: tests
+        token: ${{ secrets.QA_REMOTE }}
+        
+    - name: Begin Pytest
+      run: |
+        mv ./tests/*.* ./
+        pytest --cov
+        
