@@ -1,0 +1,62 @@
+name: CI pull request for HelloWorld
+
+on: 
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/setup-python@v2
+      with:
+        python-version: 3.8
+    - name: Install Libraries
+      run: |
+        pip install flake8 pytest pytest-cov
+        
+    - name: Checkout Own Repo
+      uses: actions/checkout@v2
+      with: 
+        repository: lowkh/HelloWorldDemoT01
+    - name: Checkout Test Script
+      uses: actions/checkout@v2
+      with:
+        repository: lowkh2/DevOpsQARepo
+        path: tests
+        token: ${{ secrets.QA_REMOTE }}
+    - name: Linter Check with Flake8
+      run: |
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics    
+    - name: Label the PR Size
+      uses: coverwallet/pr-labeler@v1.2.1
+      with:
+          xs_max_size: '10'
+          s_max_size: '100'
+          m_max_size: '500'
+          l_max_size: '1000'
+          exclude_files: '.txt'
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
+        
+    - name: Begin Pytest
+      run: |
+        mv ./tests/*.* ./
+        pytest --cov -v --junitxml=report.xml
+    - if: ${{failure()}}       
+      name: Create Issues
+      uses: nashmaniac/create-issue-action@v1.1
+      with:
+          title: Build Failed
+          token: ${{secrets.GITHUB_TOKEN}}
+          assignees: ${{github.actor}}
+          labels: worflow-failed
+          body: Workflow failed for commit ${{github.sha}} @ ${{github.ref}}       
+
+    - name: Publish Unit Test Results
+      uses: EnricoMi/publish-unit-test-result-action@v1.24
+      if: always()
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        files: report.xml
